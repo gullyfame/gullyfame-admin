@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-2xl border border-app-border bg-app-surface p-8 shadow-2xl">
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Gully Fame" className="mx-auto mb-4 h-16 w-16 rounded-2xl" />
+          <img src="/gfi-logo.png" alt="Gully Fame India" className="mx-auto mb-4 h-20 w-auto" />
           <h1 className="text-3xl font-bold text-white">
             Gully<span className="text-primary-500">Fame</span>
           </h1>

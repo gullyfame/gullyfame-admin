@@ -66,7 +66,7 @@ export default function Sidebar({ userRole }: { userRole: UserRole }) {
       <div className="flex h-14 items-center justify-between px-4 border-b border-app-border">
         <div className="flex items-center space-x-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Gully Fame" className="h-8 w-8 rounded-lg" />
+          <img src="/gfi-logo.png" alt="Gully Fame India" className="h-8 w-auto" />
           <h1 className="text-lg font-bold tracking-tight">Gully<span className="text-primary-500">Fame</span></h1>
         </div>
         <button

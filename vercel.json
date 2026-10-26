@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "installCommand": "cd apps/gully-fame-admin && npm install --workspaces=false --include-workspace-root=false",
+  "buildCommand": "cd apps/gully-fame-admin && npx next build",
+  "outputDirectory": "apps/gully-fame-admin/.next"
+}
