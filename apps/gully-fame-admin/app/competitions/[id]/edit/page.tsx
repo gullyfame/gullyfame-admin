@@ -1,31 +1,72 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
 import { getUserRole } from '@/lib/auth';
-import { mockCompetitions } from '@/lib/mockData';
+import { getCompetitionById, updateCompetition, type Competition } from '@/lib/competitionApi';
 
 export default function EditCompetitionPage() {
   const params = useParams();
   const router = useRouter();
   const userRole = getUserRole();
-  const competition = mockCompetitions.find(c => c.id === params.id);
+  const competitionId = String(params.id);
+  const [competition, setCompetition] = useState<Competition | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: competition?.title || '',
-    description: competition?.description || '',
-    rules: competition?.rules || '',
-    startDate: competition?.startDate || '',
-    endDate: competition?.endDate || '',
-    prizeAmount: competition?.prizeAmount || 0,
-    category: competition?.category || '',
-    status: competition?.status || 'draft',
-    winnerSlots: competition?.winnerSlots || 3,
-    bannerImage: competition?.bannerImage || '',
-    sponsorLogo: competition?.sponsorLogo || '',
+    title: '',
+    description: '',
+    rules: '',
+    startDate: '',
+    endDate: '',
+    prizeAmount: 0,
+    category: '',
+    status: 'draft',
+    winnerSlots: 3,
+    bannerImage: '',
+    sponsorLogo: '',
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    getCompetitionById(competitionId).then((res) => {
+      if (cancelled) return;
+      if (res.success && res.data) {
+        const c = res.data;
+        setCompetition(c);
+        setFormData({
+          title: c.title || '',
+          description: c.description || '',
+          rules: c.rules || '',
+          startDate: c.startDate ? c.startDate.slice(0, 10) : '',
+          endDate: c.endDate ? c.endDate.slice(0, 10) : '',
+          prizeAmount: c.prizeAmount || 0,
+          category: c.category || '',
+          status: c.status || 'draft',
+          winnerSlots: c.winnerSlots || 3,
+          bannerImage: c.bannerImage || '',
+          sponsorLogo: c.sponsorLogo || '',
+        });
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [competitionId]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!competition) {
     return (
@@ -43,10 +84,24 @@ export default function EditCompetitionPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Competition updated successfully!');
-    router.push(`/competitions/${competition.id}`);
+    setSaving(true);
+    const res = await updateCompetition(competitionId, {
+      title: formData.title,
+      description: formData.description,
+      rules: formData.rules,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      prizeAmount: formData.prizeAmount,
+      winnerSlots: formData.winnerSlots,
+    } as any);
+    setSaving(false);
+    if (res.success) {
+      router.push(`/competitions/${competitionId}`);
+    } else {
+      alert(res.message || 'Failed to update competition');
+    }
   };
 
   return (
@@ -225,10 +280,11 @@ export default function EditCompetitionPage() {
               </button>
               <button
                 type="submit"
+                disabled={saving}
                 className="flex-1 flex items-center justify-center space-x-2 rounded-lg bg-primary-600 px-4 py-2 font-medium text-white hover:bg-primary-700"
               >
                 <Save className="h-5 w-5" />
-                <span>Update Competition</span>
+                <span>{saving ? 'Saving...' : 'Update Competition'}</span>
               </button>
             </div>
           </div>
