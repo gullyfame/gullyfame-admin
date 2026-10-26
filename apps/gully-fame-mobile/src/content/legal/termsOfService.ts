@@ -277,7 +277,13 @@ export const TERMS_OF_SERVICE: LegalSection[] = [
     number: "27",
     heading: "CONTACT AND GRIEVANCE REDRESSAL DETAILS",
     body: [
-      { t: "p", x: "Legal Entity: GullyFame India Registered Office: Grievance Office: Email: Phone: Response/Acknowledgment: As prescribed by applicable law.." },
+      { t: "p", x: "Legal Entity: Gully Fame India Private Limited" },
+      { t: "p", x: "CIN: U62099DL2025PTC455455" },
+      { t: "p", x: "Registered Office: House 55B, Ground Floor, Najafgarh Road, (West Delhi) Delhi - 110015" },
+      { t: "p", x: "Grievance Office: House 55B, Ground Floor, Najafgarh Road, (West Delhi) Delhi - 110015" },
+      { t: "p", x: "Email: admin@gullyfame.com" },
+      { t: "p", x: "Phone: +91 98212 34605" },
+      { t: "p", x: "Response/Acknowledgment: As prescribed by applicable law." },
     ],
   },
 ];

@@ -360,15 +360,17 @@ These Terms, together with the Privacy Policy and applicable feature-specific te
 
 ## 27. CONTACT AND GRIEVANCE REDRESSAL DETAILS
 
-**Legal Entity:** GullyFame India
+**Legal Entity:** Gully Fame India Private Limited
 
-**Registered Office:** Mumbai, Maharashtra, India
+**CIN:** U62099DL2025PTC455455
 
-**Grievance Officer:** Compliance & Legal Team
+**Registered Office:** House 55B, Ground Floor, Najafgarh Road, (West Delhi) Delhi - 110015
 
-**Email:** grievances@gullyfame.com
+**Grievance Office:** House 55B, Ground Floor, Najafgarh Road, (West Delhi) Delhi - 110015
 
-**Phone:** +91-80-XXXX-XXXX
+**Email:** admin@gullyfame.com
+
+**Phone:** +91 98212 34605
 
 **Response/Acknowledgment:** As prescribed by applicable law.
 
