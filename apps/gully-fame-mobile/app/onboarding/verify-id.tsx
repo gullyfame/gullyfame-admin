@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { openOwnProfile } from "@/utils/openProfile";
 import Svg, { Path } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -32,7 +33,7 @@ export default function OnboardingVerifyId() {
       
       await AsyncStorage.setItem("faceScanDone", "true");
       
-      router.replace("/(main)/profile" as any);
+      await openOwnProfile({ replace: true });
       return;
     }
     

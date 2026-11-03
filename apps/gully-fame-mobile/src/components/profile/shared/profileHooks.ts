@@ -7,6 +7,7 @@ import { getMyKyc } from "@api/services/kycService";
 import { searchUsersPage } from "@api/services/searchService";
 import { apiGet, getErrorMessage } from "@api/client";
 import { cacheUserProfile } from "@utils/userSession";
+import { getOwnProfileSnapshot, ownProfileSnapshotReady, saveOwnProfileSnapshot } from "@utils/ownProfileCache";
 
 export interface ProfileData {
     id?: string;
@@ -51,15 +52,30 @@ const EMPTY_PROFILE: ProfileData = {
     instagramLink: "",
 };
 
-// Own profile: cached fields render instantly, then the backend profile,
-// progress, competitions and KYC status replace them.
+// Own profile: the last loaded profile renders instantly, then the backend profile,
+// progress, competitions and KYC status replace it.
 export function useOwnProfile() {
-    const [profileData, setProfileData] = useState<ProfileData>(EMPTY_PROFILE);
-    const [isLoading, setIsLoading] = useState(true);
+    const [profileData, setProfileData] = useState<ProfileData>(() => ({
+        ...EMPTY_PROFILE,
+        ...(getOwnProfileSnapshot<ProfileData>() || {}),
+    }));
+    const [isLoading, setIsLoading] = useState(() => !getOwnProfileSnapshot());
     const [error, setError] = useState("");
+
+    // Remember the latest profile for the next visit.
+    useEffect(() => {
+        if (profileData.id) saveOwnProfileSnapshot(profileData);
+    }, [profileData]);
 
     const loadUserData = useCallback(async () => {
         setError("");
+        // The startup read may still be running on the very first visit.
+        await ownProfileSnapshotReady();
+        const snapshot = getOwnProfileSnapshot<ProfileData>();
+        if (snapshot) {
+            setProfileData((prev) => (prev.id ? prev : { ...prev, ...snapshot }));
+            setIsLoading(false);
+        }
         const cached = Object.fromEntries(
             await AsyncStorage.multiGet([
                 "userFirstName",

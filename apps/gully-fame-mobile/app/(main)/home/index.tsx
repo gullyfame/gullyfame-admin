@@ -44,7 +44,7 @@ import SafeImage from "@/components/SafeImage";
 import HeroBannerCarousel from "@/components/home/HeroBannerCarousel/HeroBannerCarousel";
 import CategoriesCarousel from "@/components/home/CategoriesCarousel/CategoriesCarousel";
 import { getAuthToken, getErrorMessage } from "@/api/client";
-import { getHomeScreen } from "@/api/services/homeService";
+import { getCachedHomeScreen, getHomeScreen, HomeScreenData } from "@/api/services/homeService";
 import { listReels, FeedReel } from "@/api/services/reelsService";
 import type { Progress } from "@/api/services/userService";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
@@ -85,7 +85,8 @@ export default function GullyFameHome() {
   // Spinner only before the first feed load; later focuses refresh silently.
   const feedLoadedRef = useRef(false);
 
-  const [banners, setBanners] = useState<homePageHeroSlidesAPIData[]>([]);
+  // null until the first home data (saved copy or server) arrives, so no placeholder slides flash.
+  const [banners, setBanners] = useState<homePageHeroSlidesAPIData[] | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [trendingData, setTrendingData] = useState<FeedCard[]>([]);
   const [forYouData, setForYouData] = useState<FeedCard[]>([]);
@@ -100,33 +101,49 @@ export default function GullyFameHome() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const liveDotBlink = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [scrollY, setScrollY] = useState(0);
+  // True once the banner has scrolled away; only this flip re-renders, not every scroll frame.
+  const [headerStuck, setHeaderStuck] = useState(false);
 
   const [homeError, setHomeError] = useState("");
   const [progress, setProgress] = useState<Progress | null>(null);
   const [dailyMission, setDailyMission] = useState<{ target: number; current: number; completed: boolean } | null>(null);
   const [feedError, setFeedError] = useState("");
 
+  const applyHome = useCallback((data: HomeScreenData) => {
+    setBanners(data.banners);
+    setCategories(
+      data.categories.map((c) => ({ id: c.id, name: c.name, imageUrl: c.icon, icon: categoryIconKey(c.name) }))
+    );
+    setTrendingData(data.trending.map((t) => ({ id: t.id, title: t.title, image: t.image, likes: t.likes, votes: t.views })));
+    setLiveCompetitions(data.liveCompetitions);
+    setPastCompetitions(data.pastCompetitions);
+    setUpcomingCompeitions(data.upcomingCompetitions);
+    setTopCompetitors(data.topCompetitors);
+    setProgress(data.progress);
+    setDailyMission(data.dailyMission);
+  }, []);
+
+  // The last home screen saved on this device shows first; the server copy replaces it.
+  const homeLoadedRef = useRef(false);
+  useEffect(() => {
+    getCachedHomeScreen().then((cached) => {
+      if (cached && !homeLoadedRef.current) applyHome(cached);
+    });
+  }, [applyHome]);
+
   // GET /user/homeScreen feeds every section of this screen in one call.
   const loadHome = useCallback(async () => {
     setHomeError("");
     try {
       const data = await getHomeScreen();
-      setBanners(data.banners);
-      setCategories(
-        data.categories.map((c) => ({ id: c.id, name: c.name, imageUrl: c.icon, icon: categoryIconKey(c.name) }))
-      );
-      setTrendingData(data.trending.map((t) => ({ id: t.id, title: t.title, image: t.image, likes: t.likes, votes: t.views })));
-      setLiveCompetitions(data.liveCompetitions);
-      setPastCompetitions(data.pastCompetitions);
-      setUpcomingCompeitions(data.upcomingCompetitions);
-      setTopCompetitors(data.topCompetitors);
-      setProgress(data.progress);
-      setDailyMission(data.dailyMission);
+      homeLoadedRef.current = true;
+      applyHome(data);
     } catch (error) {
       setHomeError(getErrorMessage(error));
+      // Offline with nothing saved: stop waiting so the built-in slides can show.
+      setBanners((prev) => prev ?? []);
     }
-  }, []);
+  }, [applyHome]);
 
   // Feed tabs come from GET /reels: For You = newest, Popular = most voted of the
   // latest reels, Saved = the ones the user saved (is_saved).
@@ -307,13 +324,16 @@ export default function GullyFameHome() {
               </Svg>
             </View>
             <HeroBannerCarousel slides={banners} />
+            {/* Hidden while the sticky header shows the same icons, so they never appear twice. */}
             <View
               style={[
                 styles.heroHeaderIcons,
                 {
                   paddingTop: Platform.OS === "ios" ? insets.top + 40 : insets.top + 40,
+                  opacity: headerStuck ? 0 : 1,
                 },
               ]}
+              pointerEvents={headerStuck ? "none" : "auto"}
             >
               <TouchableOpacity
                 style={styles.heroIconButton}
@@ -882,12 +902,11 @@ export default function GullyFameHome() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      {scrollY > 50 && (
+      {headerStuck && (
         <Animated.View
           style={[
             styles.stickyHeader,
             {
-              opacity: scrollY > 50 ? 1 : 0,
               paddingTop: Platform.OS === "ios" ? insets.top + 10 : insets.top + 10,
             },
           ]}
@@ -917,7 +936,11 @@ export default function GullyFameHome() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { opacity: fadeAnim }]}
         scrollEventThrottle={16}
-        onScroll={(event) => setScrollY(event.nativeEvent.contentOffset.y)}
+        extraData={headerStuck}
+        onScroll={(event) => {
+          const stuck = event.nativeEvent.contentOffset.y > 50;
+          if (stuck !== headerStuck) setHeaderStuck(stuck);
+        }}
       />
 
       <BottomNav

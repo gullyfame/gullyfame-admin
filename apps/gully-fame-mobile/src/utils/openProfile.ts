@@ -1,4 +1,22 @@
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEFAULT_ROLE, getProfileRoute } from "@/components/profile/shared/profileTypes";
+
+/**
+ * Opens the signed-in user's own profile screen directly. Going through profile/[id]
+ * showed a spinner screen and then navigated a second time.
+ */
+export async function openOwnProfile(options: { replace?: boolean } = {}) {
+  let role: string | null = null;
+  try {
+    role = await AsyncStorage.getItem("userRole");
+  } catch {
+    // Fall back to the default role's screen; it redirects if the role differs.
+  }
+  const route = getProfileRoute(role || DEFAULT_ROLE, true);
+  if (options.replace) router.replace(route as any);
+  else router.push(route as any);
+}
 
 /**
  * Opens a user's profile. There is no "get user by id" endpoint, so whatever
@@ -22,16 +40,21 @@ export function openUserProfile(user: {
     firstName = first || "";
     lastName = rest.join(" ");
   }
-  router.push({
-    pathname: "/(main)/profile/[id]",
-    params: {
-      id: user.id,
-      userId: user.id,
-      firstName,
-      lastName,
-      username: user.username || "",
-      avatar: user.avatar || "",
-      role: user.role || "",
-    },
-  } as any);
+  const openOther = () =>
+    router.push({
+      pathname: "/(main)/profile/[id]",
+      params: {
+        id: user.id,
+        userId: user.id,
+        firstName,
+        lastName,
+        username: user.username || "",
+        avatar: user.avatar || "",
+        role: user.role || "",
+      },
+    } as any);
+  // Tapping your own name or avatar opens your profile directly.
+  AsyncStorage.getItem("userId")
+    .then((myId) => (myId && myId === user.id ? openOwnProfile() : openOther()))
+    .catch(openOther);
 }

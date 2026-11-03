@@ -1,7 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import type { ImagePickerAsset } from "expo-image-picker";
 
-import { probeMedia, runFFmpeg, toFFmpegPath, videoEncodeArgs } from "./ffmpeg";
+import { mp4AudioArgs, probeMedia, runFFmpeg, toFFmpegPath, videoEncodeArgs } from "./ffmpeg";
 
 /** Duration given to a still photo on the timeline and in the posted reel. */
 export const PHOTO_DEFAULT_DURATION = 5;
@@ -53,7 +53,7 @@ export async function importGalleryAsset(asset: ImagePickerAsset): Promise<Impor
   // FFmpeg rotates the decoded frames by the display matrix (autorotate) and writes none.
   const output = toFFmpegPath(`${FileSystem.cacheDirectory}upright_${Date.now()}.mp4`);
   await runFFmpeg(
-    ["-i", toFFmpegPath(asset.uri), "-map", "0:v:0", "-map", "0:a?", ...(await videoEncodeArgs()), "-c:a", "copy", "-y", output],
+    ["-i", toFFmpegPath(asset.uri), "-map", "0:v:0", "-map", "0:a?", ...(await videoEncodeArgs()), ...mp4AudioArgs(probe.audioCodec), "-y", output],
     `normalise rotation ${probe.rotation}°`
   );
   return { uri: `file://${output}`, type: "video", duration, width: probe.width, height: probe.height };

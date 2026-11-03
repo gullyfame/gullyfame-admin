@@ -68,7 +68,7 @@
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>Allow Gully Fame to use your location to show contests and creators near you.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow Gully Fame to access your microphone to record audio.</string>
     <key>NSMotionUsageDescription</key>

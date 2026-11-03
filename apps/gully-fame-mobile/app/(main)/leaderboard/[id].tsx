@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { openOwnProfile } from "@/utils/openProfile";
 import { useState, useEffect, useCallback } from "react";
 import { LeaderboardStyles as styles } from "@/components/TopTenLeaderboard/styles";
 import {
@@ -285,7 +286,7 @@ export default function MyFameScreen() {
                     style={[styles.leaderboardItem, item.isYou && styles.leaderboardItemYou, index !== restOfList.length - 1 && styles.leaderboardItemBorder]}
                     onPress={async () => {
                     if (item.isYou) {
-                        router.push({ pathname: "/(main)/profile/[id]", params: { id: "me" } } as any);
+                        openOwnProfile();
                     } else if (item.userId) {
                         router.push({
                         pathname: "/(main)/profile/[id]",

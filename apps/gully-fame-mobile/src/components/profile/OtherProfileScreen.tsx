@@ -7,8 +7,7 @@ import { UserIconSVG, HomeIconSVG, ReelIconSVG, SearchIconSVG, BackIcon, ShareIc
 import { useOtherUserProfile } from "@/components/profile/shared/profileHooks";
 import ProfileView, { ProfileTab } from "@/components/profile/ProfileView";
 import { OtherProfileActions } from "@/components/profile/ProfileActions";
-import HighlightsRow from "@/components/profile/HighlightsRow";
-import { GridTabIcon, ReelsTabIcon } from "@/components/profile/profileIcons";
+import { ReelsTabIcon } from "@/components/profile/profileIcons";
 import { isPhotoItem } from "@/components/profile/ProfileMediaTile";
 import { StatsSection, UserInfoSection } from "@/components/profile/shared/ProfileComponents";
 import { otherProfileStyles as styles } from "@/styles/otherProfileStyles";
@@ -43,7 +42,7 @@ export default function OtherProfileScreen() {
 
   const userId = String(params.userId || params.id || profileData.id || "");
   const reels = useUserReels(userId);
-  const { followCounts, highlights, highlightsLoading } = useProfileExtras(userId, false);
+  const { followCounts } = useProfileExtras(userId, false);
   const isFanProfile = String(params.role || profileData.role || "").toLowerCase().startsWith("fan");
 
   // There is no GET user/:id endpoint; the name/avatar passed by the opening
@@ -102,8 +101,8 @@ export default function OtherProfileScreen() {
   }, [userId, displayName, profileData.profileImage]);
 
   const videos = useMemo(() => items.filter((p) => !isPhotoItem(p)), [items]);
+  // Video-only platform: no photo grid.
   const tabs: ProfileTab[] = [
-    { key: "posts", label: "Posts", Icon: GridTabIcon, source: posts, emptyTitle: "No posts yet" },
     { key: "reels", label: "Reels", Icon: ReelsTabIcon, source: { ...posts, items: videos }, emptyTitle: "No reels yet" },
   ];
 
@@ -198,9 +197,6 @@ export default function OtherProfileScreen() {
       <StatusBar barStyle="light-content" />
       <ProfileView
         top={top}
-        highlights={
-          <HighlightsRow isOwn={false} highlights={highlights} loading={highlightsLoading && !!userId} posts={[]} onChanged={() => {}} />
-        }
         tabs={tabs}
         canCreatePost={false}
         unavailable={unavailable}

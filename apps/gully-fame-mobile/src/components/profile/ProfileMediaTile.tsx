@@ -30,11 +30,13 @@ const viewsOf = (item: ProfileMediaItem): number | undefined => {
 interface Props {
   item: ProfileMediaItem;
   size: number;
+  /** Tile height; reels use a tall 9:16 tile like Instagram. */
+  height: number;
   onPress: (item: ProfileMediaItem) => void;
   onLongPress?: (item: ProfileMediaItem) => void;
 }
 
-function ProfileMediaTileBase({ item, size, onPress, onLongPress }: Props) {
+function ProfileMediaTileBase({ item, size, height, onPress, onLongPress }: Props) {
   const isPhoto = isPhotoItem(item);
   const videoUrl = isPhoto ? null : resolveMediaUrl(item.uri);
   const serverThumb = resolveMediaUrl(item.thumbnail);
@@ -65,7 +67,7 @@ function ProfileMediaTileBase({ item, size, onPress, onLongPress }: Props) {
       onPress={() => onPress(item)}
       onLongPress={onLongPress ? () => onLongPress(item) : undefined}
       delayLongPress={onLongPress ? 350 : undefined}
-      style={[styles.tile, { width: size, height: size }]}
+      style={[styles.tile, { width: size, height }]}
       accessibilityRole="imagebutton"
       accessibilityLabel={isPhoto ? "Photo post" : "Video post"}
     >
@@ -112,7 +114,7 @@ function ProfileMediaTileBase({ item, size, onPress, onLongPress }: Props) {
 export const ProfileMediaTile = memo(
   ProfileMediaTileBase,
   (a, b) =>
-    a.item === b.item && a.size === b.size && a.onPress === b.onPress && a.onLongPress === b.onLongPress
+    a.item === b.item && a.size === b.size && a.height === b.height && a.onPress === b.onPress && a.onLongPress === b.onLongPress
 );
 
 const styles = StyleSheet.create({

@@ -50,10 +50,8 @@ export interface ProfileTab {
 }
 
 interface Props {
-  /** Everything above the highlights row, unchanged from the original profile. */
+  /** Everything above the tabs, unchanged from the original profile. */
   top: React.ReactNode;
-  /** Highlights row, shown between the top section and the tabs. */
-  highlights?: React.ReactNode;
   tabs: ProfileTab[];
   /** Whether "Create your first post" is offered (fans cannot upload). */
   canCreatePost: boolean;
@@ -67,10 +65,12 @@ type Row = { type: "top" } | { type: "tabs" } | { type: "row"; key: string; item
 
 const Skeleton = ({ style }: { style: any }) => <View style={[styles.skeleton, style]} />;
 
-export default function ProfileView({ top, highlights, tabs, canCreatePost, unavailable, ownerId }: Props) {
+export default function ProfileView({ top, tabs, canCreatePost, unavailable, ownerId }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height: windowHeight } = useWindowDimensions();
   const tileSize = Math.floor((width - GAP * 2) / 3);
+  // Tall 9:16 tiles, the same shape as the reels themselves.
+  const tileHeight = Math.round((tileSize * 16) / 9);
 
   const [tabKey, setTabKey] = useState(tabs[0]?.key ?? "");
   const tab = tabs.find((t) => t.key === tabKey) ?? tabs[0];
@@ -80,6 +80,8 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
   const offsets = useRef<Record<string, number>>({});
   const currentOffset = useRef(0);
   const tabsTop = useRef(0);
+  // The tab bar only needs the status-bar inset once it is pinned to the top of the screen.
+  const [tabsStuck, setTabsStuck] = useState(false);
 
   const rows: Row[] = useMemo(() => {
     const base: Row[] = [{ type: "top" }];
@@ -173,7 +175,7 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
   const renderTabs = () => (
     <View
       // Top padding keeps the icons below the status bar once the tab bar is pinned.
-      style={[styles.tabs, { paddingTop: insets.top }]}
+      style={[styles.tabs, { paddingTop: tabsStuck ? insets.top : 0 }]}
     >
       {tabs.map(({ key, label, Icon }) => {
         const active = key === tabKey;
@@ -208,7 +210,7 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
       return (
         <View style={styles.skeletonGrid}>
           {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} style={{ width: tileSize, height: tileSize }} />
+            <Skeleton key={i} style={{ width: tileSize, height: tileHeight }} />
           ))}
         </View>
       );
@@ -249,7 +251,6 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
         // The tab bar's scroll offset equals the height of everything above it.
         <View onLayout={(e) => (tabsTop.current = e.nativeEvent.layout.height)}>
           {top}
-          {!unavailable ? highlights : null}
           {source?.isOffline && source.items.length > 0 ? (
             <View style={styles.offline}>
               <Text style={styles.offlineText}>You're offline. Showing saved posts.</Text>
@@ -268,6 +269,7 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
             key={media.id}
             item={media}
             size={tileSize}
+            height={tileHeight}
             onPress={openItem}
             onLongPress={tab?.ownContent ? ownActions : undefined}
           />
@@ -286,10 +288,12 @@ export default function ProfileView({ top, highlights, tabs, canCreatePost, unav
         data={rows}
         renderItem={renderRow}
         keyExtractor={keyExtractor}
-        extraData={tabKey}
+        extraData={`${tabKey}-${tabsStuck}`}
         stickyHeaderIndices={unavailable ? undefined : [1]}
         onScroll={(e) => {
           currentOffset.current = e.nativeEvent.contentOffset.y;
+          const stuck = tabsTop.current > 0 && currentOffset.current >= tabsTop.current;
+          if (stuck !== tabsStuck) setTabsStuck(stuck);
         }}
         scrollEventThrottle={32}
         onEndReached={source?.hasMore ? source.loadMore : undefined}

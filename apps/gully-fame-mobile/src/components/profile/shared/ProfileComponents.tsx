@@ -1,22 +1,31 @@
 // Shared profile components - used across all profile screens
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";
 import { ProfileData } from "./profileHooks";
+import { BIO_PREVIEW_LINES, limitBio } from "./profileTypes";
 import { VerifiedBadgeIcon as VerifiedBadge } from "@/icons";
 const { width, height } = Dimensions.get("window");
+
+// Competitions needed to unlock the 1st..5th star (matches the "How to Level Up" rules).
+const STAR_UNLOCK_COMPETITIONS = [3, 5, 10, 20, 30];
 
 // Level Up Section Component
 export const LevelUpSection = ({
     onPress,
     levelPercentage = 30,
+    competitions = 0,
+    compact = false,
 }: {
     onPress: () => void;
     levelPercentage?: number;
+    competitions?: number;
+    /** Tighter bottom gap, used when the section sits inside the rank card. */
+    compact?: boolean;
 }) => (
     <TouchableOpacity
-        style={styles.levelUpContainer}
+        style={[styles.levelUpContainer, compact && styles.levelUpContainerCompact]}
         onPress={onPress}
         activeOpacity={0.8}
     >
@@ -28,8 +37,10 @@ export const LevelUpSection = ({
                 style={styles.levelUpGradient}
             >
                 <View style={styles.starsContainer}>
-                    {[0, 1, 2, 3, 4].map((starIndex) => {
+                    {STAR_UNLOCK_COMPETITIONS.map((required, starIndex) => {
                         const starPosition = starIndex * 20 + 10;
+                        // Earned stars are solid white; locked ones are dark gold outlines.
+                        const earned = competitions >= required;
                         return (
                             <View
                                 key={starIndex}
@@ -46,9 +57,10 @@ export const LevelUpSection = ({
                                 >
                                     <Path
                                         d="M11.2691 4.41115C11.5006 3.89177 11.6164 3.63208 11.7776 3.55211C11.9176 3.48263 12.082 3.48263 12.222 3.55211C12.3832 3.63208 12.499 3.89177 12.7305 4.41115L14.5745 8.54808C14.643 8.70162 14.6772 8.77839 14.7302 8.83718C14.777 8.8892 14.8343 8.93081 14.8982 8.95929C14.9705 8.99149 15.0541 9.00031 15.2213 9.01795L19.7256 9.49336C20.2911 9.55304 20.5738 9.58288 20.6997 9.71147C20.809 9.82316 20.8598 9.97956 20.837 10.1342C20.8108 10.3122 20.5996 10.5025 20.1772 10.8832L16.8125 13.9154C16.6877 14.0279 16.6252 14.0842 16.5857 14.1527C16.5507 14.2134 16.5288 14.2807 16.5215 14.3503C16.5132 14.429 16.5306 14.5112 16.5655 14.6757L17.5053 19.1064C17.6233 19.6627 17.6823 19.9408 17.5989 20.1002C17.5264 20.2388 17.3934 20.3354 17.2393 20.3615C17.0619 20.3915 16.8156 20.2495 16.323 19.9654L12.3995 17.7024C12.2539 17.6184 12.1811 17.5765 12.1037 17.56C12.0352 17.5455 11.9644 17.5455 11.8959 17.56C11.8185 17.5765 11.7457 17.6184 11.6001 17.7024L7.67662 19.9654C7.18404 20.2495 6.93775 20.3915 6.76034 20.3615C6.60623 20.3354 6.47319 20.2388 6.40075 20.1002C6.31736 19.9408 6.37635 19.6627 6.49434 19.1064L7.4341 14.6757C7.46898 14.5112 7.48642 14.429 7.47814 14.3503C7.47081 14.2807 7.44894 14.2134 7.41394 14.1527C7.37439 14.0842 7.31195 14.0279 7.18708 13.9154L3.82246 10.8832C3.40005 10.5025 3.18884 10.3122 3.16258 10.1342C3.13978 9.97956 3.19059 9.82316 3.29993 9.71147C3.42581 9.58288 3.70856 9.55304 4.27406 9.49336L8.77835 9.01795C8.94553 9.00031 9.02911 8.99149 9.10139 8.95929C9.16534 8.93081 9.2226 8.8892 9.26946 8.83718C9.32241 8.77839 9.35663 8.70162 9.42508 8.54808L11.2691 4.41115Z"
-                                        fill="#FFFFFF"
-                                        stroke="#FFFFFF"
+                                        fill={earned ? "#FFFFFF" : "rgba(122, 67, 0, 0.35)"}
+                                        stroke={earned ? "#7A4300" : "#FFFFFF"}
                                         strokeWidth={1}
+                                        strokeOpacity={earned ? 1 : 0.9}
                                     />
                                 </Svg>
                             </View>
@@ -58,10 +70,56 @@ export const LevelUpSection = ({
             </LinearGradient>
         </View>
         <Text style={styles.levelUpText}>
-            Level up yourself to become a Legend of Dance
+            Level up yourself to become a Gully Star
         </Text>
     </TouchableOpacity>
 );
+
+/** Characters dropped from the last preview line to make room for "… more". */
+const BIO_MORE_ROOM = 8;
+
+/**
+ * Bio cut to BIO_PREVIEW_LINES lines ending in "… more"; tapping it shows the whole bio.
+ * `inset` is where the name starts, so the left-aligned bio lines up with it.
+ */
+const BioText = ({ text, inset }: { text: string; inset: number }) => {
+    const [expanded, setExpanded] = useState(false);
+    const [lines, setLines] = useState<string[]>([]);
+
+    let preview: string | null = null;
+    if (lines.length > BIO_PREVIEW_LINES) {
+        const last = lines[BIO_PREVIEW_LINES - 1].trimEnd();
+        preview =
+            lines.slice(0, BIO_PREVIEW_LINES - 1).join("") +
+            last.slice(0, Math.max(0, last.length - BIO_MORE_ROOM)).trimEnd();
+    }
+
+    return (
+        <View style={[styles.bioContainer, { paddingLeft: inset }]}>
+            {/* Hidden full-length copy, measured to find where the third line ends. */}
+            <Text
+                style={[styles.userBio, styles.bioMeasure, { left: inset }]}
+                onTextLayout={(e) => {
+                    const next = e.nativeEvent.lines.map((l) => l.text);
+                    setLines((prev) => (prev.join("\u0000") === next.join("\u0000") ? prev : next));
+                }}
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+            >
+                {text}
+            </Text>
+            <Text style={styles.userBio}>
+                {preview === null || expanded ? text : `${preview}… `}
+                {preview !== null ? (
+                    <Text style={styles.bioToggle} onPress={() => setExpanded((v) => !v)} accessibilityRole="button">
+                        {expanded ? " less" : "more"}
+                    </Text>
+                ) : null}
+            </Text>
+        </View>
+    );
+};
 
 // Stats Section Component
 export const StatsSection = ({
@@ -111,6 +169,7 @@ export const UserInfoSection = ({
     userNameMarginTop,
     role = "fan",
     handleUpgradeClick = () => {},
+    nameFallback = "User",
 }: {
     profileData: ProfileData;
     onEditBio?: () => void;
@@ -119,8 +178,14 @@ export const UserInfoSection = ({
     userNameMarginTop?: number;
     role?: "participant" | "fan" | "other";
     handleUpgradeClick?: () => void;
+    /** Shown when there is no name; the own profile passes "" while it is still loading. */
+    nameFallback?: string;
 }) => {
     // Only the words the user actually saved are shown (no placeholder words).
+    // Where the name starts, so the bio can line up under it (capped for very short names).
+    const [nameStart, setNameStart] = useState(0);
+    const bioInset = Math.min(nameStart, width * 0.3);
+
     const displayWords: string[] = threeWords && threeWords.trim()
         ? threeWords
               .split("|")
@@ -139,7 +204,7 @@ export const UserInfoSection = ({
                 ]}
             >
                 <View style={styles.userNameRowSpacerLeft} />
-                <View style={styles.userNameWithBadge}>
+                <View style={styles.userNameWithBadge} onLayout={(e) => setNameStart(e.nativeEvent.layout.x)}>
                     <Text
                         style={styles.userName}
                         numberOfLines={1}
@@ -150,7 +215,7 @@ export const UserInfoSection = ({
                             ? `${profileData.firstName} ${profileData.lastName}`
                             : profileData.firstName ||
                               profileData.lastName ||
-                              "User"}
+                              nameFallback}
                     </Text>
                     {profileData.isVerified && (
                         <View style={styles.verifiedBadgeContainer}>
@@ -160,11 +225,7 @@ export const UserInfoSection = ({
                 </View>
                 <View style={styles.userNameRowSpacerRight} />
             </View>
-            {profileData.bio ? (
-                <View style={styles.bioContainer}>
-                    <Text style={styles.userBio}>{profileData.bio}</Text>
-                </View>
-            ) : null}
+            {profileData.bio ? <BioText text={limitBio(profileData.bio).trim()} inset={bioInset} /> : null}
             {displayWords.length > 0 && (
                 <View style={styles.threeWordsContainer}>
                     <Text style={styles.threeWordsText} numberOfLines={1}>
@@ -182,6 +243,7 @@ export const UserInfoSection = ({
                     </Text>
                 </View>
             )}
+            {(role === "fan" || (showEditButton && onEditBio)) && (
             <View
                 style={[
                     styles.editContainer,
@@ -237,6 +299,7 @@ export const UserInfoSection = ({
                     </TouchableOpacity>
                 )}
             </View>
+            )}
         </View>
     );
 };
@@ -248,6 +311,9 @@ const styles = StyleSheet.create({
     levelUpContainer: {
         marginTop: 0,
         marginBottom: 20,
+    },
+    levelUpContainerCompact: {
+        marginBottom: 8,
     },
     contentAway: {
         justifyContent: "space-between",
@@ -345,7 +411,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginTop: -height * 0.012,
         paddingHorizontal: width * 0.05,
-        marginBottom: height * 0.025,
+        marginBottom: 0,
     },
     userNameRow: {
         flexDirection: "row",
@@ -397,15 +463,25 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     bioContainer: {
-        alignItems: "center",
-        justifyContent: "center",
         width: "100%",
     },
+    bioMeasure: {
+        position: "absolute",
+        right: 0,
+        top: 0,
+        opacity: 0,
+    },
+    bioToggle: {
+        color: "#EC9A15",
+        fontWeight: "600",
+    },
     userBio: {
-        fontSize: width * 0.03,
+        fontSize: 14,
+        lineHeight: 20,
         color: "white",
         opacity: 0.8,
-        textAlign: "center",
+        textAlign: "left",
+        // Full width (not shrink-to-fit) so the hidden measuring copy wraps exactly like the visible bio.
         width: "100%",
     },
     threeWordsContainer: {

@@ -14,33 +14,7 @@ export interface ProfileInsights {
   viewsLast30Days: number;
 }
 
-export interface HighlightItem {
-  id: string;
-  /** "video" plays to the end; anything else is shown as a photo. */
-  mediaType: "video" | "photo";
-  url: string;
-  thumbnail?: string | null;
-}
-
-export interface ProfileHighlight {
-  id: string;
-  title: string;
-  coverUrl: string | null;
-  items: HighlightItem[];
-}
-
-export interface HighlightDraft {
-  title: string;
-  coverUrl: string | null;
-  /** Existing post ids picked from the user's own posts. */
-  postIds: string[];
-  /** Local gallery files picked by the user (uploaded before saving). */
-  localFiles: { uri: string; mediaType: "video" | "photo" }[];
-}
-
 type Result<T = undefined> = { success: boolean; message: string; data?: T };
-
-const NOT_AVAILABLE = "Highlights can't be saved yet. This needs a server update.";
 
 /**
  * Follower/following totals for a user. `null` means "unknown", which the UI shows as "–".
@@ -57,30 +31,6 @@ export async function getFollowCounts(_userId: string): Promise<FollowCounts | n
 export async function getProfileInsights(): Promise<ProfileInsights | null> {
   // BACKEND_PENDING: GET user/insights?days=30 -> { viewsLast30Days: number }
   return null;
-}
-
-/**
- * Saved highlights for a user, newest first.
- */
-export async function getHighlights(_userId: string): Promise<ProfileHighlight[]> {
-  // BACKEND_PENDING: GET user/:id/highlights -> [{ _id, title, coverUrl, items: [{ _id, mediaType, url, thumbnail }] }]
-  return [];
-}
-
-export async function createHighlight(_draft: HighlightDraft): Promise<Result<ProfileHighlight>> {
-  // BACKEND_PENDING: POST user/highlights { title, coverUrl, postIds[], mediaUrls[] } -> highlight
-  // (gallery files would first go through POST reels/upload-url with assetType "highlights")
-  return { success: false, message: NOT_AVAILABLE };
-}
-
-export async function updateHighlight(_id: string, _draft: HighlightDraft): Promise<Result<ProfileHighlight>> {
-  // BACKEND_PENDING: PATCH user/highlights/:id { title, coverUrl, postIds[], mediaUrls[] } -> highlight
-  return { success: false, message: NOT_AVAILABLE };
-}
-
-export async function deleteHighlight(_id: string): Promise<Result> {
-  // BACKEND_PENDING: DELETE user/highlights/:id -> { deleted: true }
-  return { success: false, message: "Highlights can't be deleted yet. This needs a server update." };
 }
 
 /** Whether the Delete quick action is offered on own posts. */
@@ -113,8 +63,7 @@ async function removeFromLocalCaches(postId: string) {
 
 /**
  * Delete one of the signed-in user's posts.
- * DELETE reels/:id (owner only). BACKEND_PENDING: this route is not on the server yet,
- * so until it ships the call fails and the post is kept.
+ * DELETE reels/:id (owner only; the server soft-deletes, so it disappears everywhere).
  */
 export async function deletePost(postId: string): Promise<Result> {
   const result = await toResult(() => apiDelete(`reels/${postId}`), "Post deleted");

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAuthToken, setAuthToken } from "@api/client";
 import { getProfile, BackendUser } from "@api/services/userService";
+import { clearOwnProfileSnapshot } from "./ownProfileCache";
 
 /**
  * Session handling.
@@ -33,6 +34,7 @@ export const SESSION_CACHE_KEYS = [
   "userProfileImage",
   "profileCompleted",
   "accountCreatedVia",
+  "@gullyfame_home_screen",
   // Legacy: the token used to be duplicated here. Always cleared.
   "authToken",
 ];
@@ -59,6 +61,7 @@ export async function cacheUserProfile(user: BackendUser): Promise<void> {
  * only returns token + userId), the profile is fetched with the new token.
  */
 export async function saveUserSession(token: string, user?: BackendUser | null): Promise<BackendUser> {
+  clearOwnProfileSnapshot();
   await setAuthToken(token);
   const profile = user && user._id ? user : await getProfile();
   await cacheUserProfile(profile);

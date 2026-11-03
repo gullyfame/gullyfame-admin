@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { openOwnProfile } from "@/utils/openProfile";
 import {
   Animated,
   Dimensions,
@@ -183,7 +184,7 @@ function DrawerMenu({ visible, onClose }) {
                     <TouchableOpacity
                       style={styles.loggedInMenuItem}
                       onPress={() => {
-                        router.push("/(main)/profile");
+                        openOwnProfile();
                         onClose();
                       }}
                     >
@@ -197,7 +198,7 @@ function DrawerMenu({ visible, onClose }) {
                   <View style={styles.loggedInMenuGroup}>
                     <TouchableOpacity
                       onPress={() => {
-                        router.push("/(main)/profile");
+                        openOwnProfile();
                         onClose();
                       }}
                       style={styles.loggedInMenuItem}

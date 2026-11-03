@@ -25,7 +25,7 @@
       "icon": "./assets/images/app-icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app-icon-adaptive-foreground.png",
-        "backgroundColor": "#100B07"
+        "backgroundColor": "#161616"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [

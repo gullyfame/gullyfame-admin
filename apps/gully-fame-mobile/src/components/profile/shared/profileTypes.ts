@@ -26,6 +26,14 @@ export const PROFILE_ROUTES: Record<string, ProfileRouteConfig> = {
 // Default role if not specified
 export const DEFAULT_ROLE: UserRole = "participants";
 
+/** Longest bio a user can save. Line breaks are allowed. */
+export const BIO_MAX_LENGTH = 150;
+/** Lines of bio shown on the profile before "more". */
+export const BIO_PREVIEW_LINES = 3;
+
+/** Applies the bio length limit. */
+export const limitBio = (text: string) => text.slice(0, BIO_MAX_LENGTH);
+
 // Get route for a role
 export function getProfileRoute(role: UserRole, isOwnProfile: boolean): string {
   const roleConfig = PROFILE_ROUTES[role] || PROFILE_ROUTES[DEFAULT_ROLE];

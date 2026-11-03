@@ -4,6 +4,7 @@ import { removeAuthToken } from "@api/client";
 import { socketChatService } from "@api/services/socketChatService";
 import { store, resetStore } from "@/store";
 import { SESSION_CACHE_KEYS } from "./userSession";
+import { clearOwnProfileSnapshot } from "./ownProfileCache";
 
 /**
  * Logout is local-only: the backend has no logout endpoint and its JWTs never
@@ -14,6 +15,7 @@ export const performLogout = async (): Promise<void> => {
   try {
     socketChatService.disconnect();
     await removeAuthToken();
+    clearOwnProfileSnapshot();
     await AsyncStorage.multiRemove([...SESSION_CACHE_KEYS, "termsAccepted"]);
     store.dispatch(resetStore());
   } finally {

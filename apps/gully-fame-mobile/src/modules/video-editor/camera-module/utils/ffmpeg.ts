@@ -66,7 +66,7 @@ export async function runFFmpeg(
     const logs = (await session.getAllLogsAsString()) ?? "";
     const code = returnCode?.getValue() ?? null;
     // One line per entry: Android's logcat truncates single entries over ~4 KB.
-    
+    logs.split("\n").slice(-40).forEach((line) => line.trim() && console.warn(`[${label}] ${line}`));
     throw new FFmpegError(`${label} failed (FFmpeg return code ${code})`, logs, code);
   }
 
@@ -98,11 +98,24 @@ export function videoEncodeArgs(): Promise<string[]> {
   return videoEncoder;
 }
 
+/** Audio codecs the MP4 muxer accepts as they are. */
+const MP4_AUDIO_CODECS = new Set(["aac", "mp3", "alac", "opus", "ac3", "eac3"]);
+
+/**
+ * Audio args for an MP4 output: stream copy when MP4 can hold the source codec, otherwise
+ * AAC. Some recorders write AMR (amr_nb/amr_wb), which MP4 rejects ("Could not find tag for codec").
+ */
+export function mp4AudioArgs(audioCodec: string | null): string[] {
+  return !audioCodec || MP4_AUDIO_CODECS.has(audioCodec) ? ["-c:a", "copy"] : ["-c:a", "aac", "-b:a", "128k"];
+}
+
 export interface MediaProbe {
   /** Display size, honouring rotation metadata. */
   width: number;
   height: number;
   hasAudio: boolean;
+  /** Codec of the first audio stream (e.g. "aac", "amr_nb"); null without audio. */
+  audioCodec: string | null;
   /** Seconds; 0 for still images or when unknown. */
   duration: number;
   /** Display rotation from the container metadata, in degrees (0, 90, 180, 270). */
@@ -127,9 +140,11 @@ export async function probeMedia(path: string): Promise<MediaProbe> {
   const props = stream.getAllProperties() ?? {};
   const sideRotation = (props.side_data_list ?? []).find((d: any) => d.rotation !== undefined)?.rotation;
   const rotation = ((Math.round(Number(sideRotation ?? props.tags?.rotate ?? 0)) % 360) + 360) % 360;
-  const hasAudio = streams.some((st) => st.getType() === "audio");
+  const audio = streams.find((st) => st.getType() === "audio");
+  const hasAudio = !!audio;
+  const audioCodec = audio?.getCodec() ?? null;
   const duration = Number(info?.getDuration()) || 0;
   return rotation % 180 === 90
-    ? { width: stream.getHeight(), height: stream.getWidth(), hasAudio, duration, rotation }
-    : { width: stream.getWidth(), height: stream.getHeight(), hasAudio, duration, rotation };
+    ? { width: stream.getHeight(), height: stream.getWidth(), hasAudio, audioCodec, duration, rotation }
+    : { width: stream.getWidth(), height: stream.getHeight(), hasAudio, audioCodec, duration, rotation };
 }

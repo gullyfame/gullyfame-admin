@@ -8,9 +8,9 @@ export const participantSelfProfileScreenStyles = StyleSheet.create({
     rankCardContainer: {
         backgroundColor: "rgba(255, 255, 255, 0.04)", // Changed from black to faint white
         borderRadius: 16,
-        padding: 16,
+        padding: 12,
         marginHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 8,
         borderWidth: 1,
         borderColor: "rgba(236, 154, 21, 0.3)",
         // Remove the heavy black shadow so it blends smoother
@@ -20,7 +20,7 @@ export const participantSelfProfileScreenStyles = StyleSheet.create({
         shadowRadius: 10,
     },
     progressContainer: {
-        marginTop: 10,
+        marginTop: 2,
     },
     progressHeader: {
         flexDirection: "row",

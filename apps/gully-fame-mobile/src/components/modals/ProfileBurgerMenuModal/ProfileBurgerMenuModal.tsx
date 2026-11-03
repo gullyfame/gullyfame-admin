@@ -1,6 +1,7 @@
 // File Route: apps/gully-fame-mobile/components/ProfileBurgerMenuModal.tsx
 
 import { router } from "expo-router";
+import { openOwnProfile } from "@/utils/openProfile";
 import { styles } from "./styles";
 import {
   Modal,
@@ -155,7 +156,10 @@ function ProfileBurgerMenuModal({
               <Text style={styles.menuItemText}>History</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation("/(main)/profile")}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => {
+              onClose();
+              setTimeout(() => openOwnProfile(), 120);
+            }}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                 <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#EC9A15" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>

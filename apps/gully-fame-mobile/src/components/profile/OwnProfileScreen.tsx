@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useFocusEffect } from "expo-router/react-navigation";
 import {
-  Animated,
   Dimensions,
-  Image,
   Linking,
   Modal,
   ScrollView,
@@ -16,12 +14,13 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image as ExpoImage } from "expo-image";
 import Svg, { Path } from "react-native-svg";
 import BottomNav from "@components/layout/BottomNav";
 import { toastError, toastSuccess } from "@/components/ui/Toast";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { useOwnProfile } from "@/components/profile/shared/profileHooks";
-import { getProfileRoute } from "@/components/profile/shared/profileTypes";
+import { BIO_MAX_LENGTH, getProfileRoute, limitBio } from "@/components/profile/shared/profileTypes";
 import { LevelUpSection, StatsSection, UserInfoSection } from "@/components/profile/shared/ProfileComponents";
 import { participantSelfProfileScreenStyles as pStyles } from "@/styles/participantSelfProfileScreenStyles";
 import { fanSelfProfileScreenStyles as fStyles } from "@/styles/fanSelfProfileScreenStyles";
@@ -30,8 +29,7 @@ import ProfileBurgerMenuModal from "@/components/modals/ProfileBurgerMenuModal/P
 import UpgradeFanToParticipantModal from "@/components/modals/UpgradeFanToParticipantModal/UpgradeFanToParticipantModal";
 import ProfileView, { ProfileTab } from "@/components/profile/ProfileView";
 import { OwnProfileActions } from "@/components/profile/ProfileActions";
-import HighlightsRow from "@/components/profile/HighlightsRow";
-import { GridTabIcon, HeartOutlineIcon, ReelsTabIcon } from "@/components/profile/profileIcons";
+import { ReelsTabIcon } from "@/components/profile/profileIcons";
 import { isPhotoItem } from "@/components/profile/ProfileMediaTile";
 import { useUserReels } from "@/hooks/useUserReels";
 import { useProfileExtras } from "@/hooks/useProfileExtras";
@@ -102,15 +100,13 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
   const [tempX, setTempX] = useState("");
   const [mobile, setMobile] = useState("");
   const [storedEmail, setStoredEmail] = useState("");
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const userId = profileData.id || profileData._id || "";
   // "me" resolves to the stored user id, so posts (and their offline cache) load even
   // before the profile request returns.
   const reels = useUserReels(userId || "me");
-  const liked = useInteractionReels("liked", true);
   const saved = useInteractionReels("saved", true);
-  const { followCounts, highlights, highlightsLoading, refreshHighlights } = useProfileExtras(userId, true);
+  const { followCounts } = useProfileExtras(userId, true);
 
   useEffect(() => {
     // Contact details saved at sign-in (the profile hook does not load them).
@@ -121,19 +117,6 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
       })
       .catch(() => {});
   }, []);
-
-  // Participant avatar pulse from the original screen.
-  useEffect(() => {
-    if (isFan) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [isFan, pulseAnim]);
 
   const { refetch: refetchReels } = reels;
   useFocusEffect(
@@ -152,7 +135,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
   );
 
   const openEdit = useCallback(() => {
-    setTempBio(profileData.bio || "");
+    setTempBio(limitBio(profileData.bio || ""));
     const words = (profileData.threeWords || "").split("|").map((w) => w.trim()).filter(Boolean);
     setTempThreeWords([words[0] || "", words[1] || "", words[2] || ""]);
     setTempInsta(profileData.instagramLink || "");
@@ -164,7 +147,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
     const threeWordsFormatted = tempThreeWords.filter((w) => w.trim()).join(" | ");
     setProfileData((prev) => ({
       ...prev,
-      bio: tempBio,
+      bio: limitBio(tempBio).trim(),
       threeWords: threeWordsFormatted || undefined,
       instagramLink: tempInsta,
       xLink: tempX,
@@ -173,7 +156,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
     // so these are kept on this device only.
     try {
       await AsyncStorage.multiSet([
-        ["userBio", tempBio],
+        ["userBio", limitBio(tempBio).trim()],
         ["userThreeWords", threeWordsFormatted],
         ["userInstagram", tempInsta],
         ["userXLink", tempX],
@@ -202,41 +185,28 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
     loadMore: reels.loadMore,
   };
 
+  // Video-only platform: no photo grid and no Liked tab.
   const tabs: ProfileTab[] = [
-    {
-      key: "posts",
-      label: "Posts",
-      Icon: GridTabIcon,
-      source: postsSource,
-      emptyTitle: "No posts yet",
-      emptyText: isFan ? "Upgrade to Participant to start posting." : "Share your talent with the Gully Fame community.",
-      ownContent: true,
-    },
     {
       key: "reels",
       label: "Reels",
       Icon: ReelsTabIcon,
       source: { ...postsSource, items: videos },
       emptyTitle: "No reels yet",
+      emptyText: isFan ? "Upgrade to Participant to start posting." : "Share your talent with the Gully Fame community.",
       ownContent: true,
-    },
-    {
-      key: "liked",
-      label: "Liked",
-      Icon: HeartOutlineIcon,
-      source: liked,
-      emptyTitle: "Liked reels aren't available yet",
     },
     { key: "saved", label: "Saved", Icon: BookmarkTabIcon, source: saved, emptyTitle: "Nothing saved yet" },
   ];
 
   const avatar = avatarSource(profileData.profileImage);
+  // Disk-cached so the photo shows straight away on later visits.
   const avatarImage = avatar ? (
-    <Image source={avatar} style={styles.gamifiedProfileImage} />
+    <ExpoImage source={avatar} style={styles.gamifiedProfileImage} cachePolicy="memory-disk" contentFit="cover" />
   ) : (
     <View style={[styles.gamifiedProfileImage, { backgroundColor: "#5A3C1C", alignItems: "center", justifyContent: "center" }]}>
       <Text style={{ color: "#EC9A15", fontSize: 40, fontWeight: "700" }}>
-        {(displayName || "?").charAt(0).toUpperCase()}
+        {displayName.charAt(0).toUpperCase()}
       </Text>
     </View>
   );
@@ -271,7 +241,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
           </View>
         </View>
       ) : (
-        <Animated.View style={[styles.gamifiedAvatarContainer, { transform: [{ scale: pulseAnim }] }]}>
+        <View style={styles.gamifiedAvatarContainer}>
           <LinearGradient
             colors={["#FFD700", "#FF8C00", "#FF0055"]}
             style={styles.avatarGradientRing}
@@ -283,7 +253,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
           <View style={styles.rankBadgeContainer}>
             <Text style={styles.rankBadgeText}>{profileData.currentRank || "STAR"}</Text>
           </View>
-        </Animated.View>
+        </View>
       )}
 
       <UserInfoSection
@@ -293,6 +263,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
         threeWords={profileData.threeWords}
         userNameMarginTop={isFan ? height * 0.001 : undefined}
         handleUpgradeClick={() => setUpgradeVisible(true)}
+        nameFallback={isLoading ? "" : "User"}
       />
 
       {/* The social row below pulls itself up 20px (it used to sit under the pencil row). */}
@@ -336,10 +307,19 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
         />
 
         {isFan ? (
-          <LevelUpSection onPress={() => setLevelUpVisible(true)} levelPercentage={profileData.levelPercentage || 0} />
+          <LevelUpSection
+            onPress={() => setLevelUpVisible(true)}
+            levelPercentage={profileData.levelPercentage || 0}
+            competitions={profileData.competitionsParticipated || 0}
+          />
         ) : (
           <View style={pStyles.rankCardContainer}>
-            <LevelUpSection onPress={() => setLevelUpVisible(true)} levelPercentage={profileData.levelPercentage || 0} />
+            <LevelUpSection
+              onPress={() => setLevelUpVisible(true)}
+              levelPercentage={profileData.levelPercentage || 0}
+              competitions={profileData.competitionsParticipated || 0}
+              compact
+            />
             <View style={pStyles.progressContainer}>
               <View style={pStyles.progressHeader}>
                 <Text style={pStyles.progressText}>Next Rank: {profileData.nextRank || "Superstar"}</Text>
@@ -372,15 +352,6 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
       <StatusBar barStyle="light-content" />
       <ProfileView
         top={top}
-        highlights={
-          <HighlightsRow
-            isOwn
-            highlights={highlights}
-            loading={highlightsLoading && !!userId}
-            posts={posts}
-            onChanged={refreshHighlights}
-          />
-        }
         tabs={tabs}
         canCreatePost={!isFan}
         ownerId={userId}
@@ -426,7 +397,7 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
 
       <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
         <View style={pStyles.editBioOverlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} keyboardShouldPersistTaps="handled">
+          <ScrollView style={{ width: "100%" }} contentContainerStyle={{ flexGrow: 1, justifyContent: "center", width: "100%" }} keyboardShouldPersistTaps="handled">
             <View style={pStyles.editBioContainer}>
               <View style={pStyles.editBioHeader}>
                 <Text style={pStyles.editBioTitle}>Edit profile</Text>
@@ -438,13 +409,13 @@ export default function OwnProfileScreen({ role }: { role: "fan" | "participant"
               <TextInput
                 style={pStyles.editBioInput}
                 value={tempBio}
-                onChangeText={setTempBio}
+                onChangeText={(text) => setTempBio(limitBio(text))}
                 placeholder="Write something about yourself..."
                 placeholderTextColor="#999"
                 multiline
-                maxLength={150}
+                maxLength={BIO_MAX_LENGTH}
               />
-              <Text style={pStyles.bioCharCount}>{tempBio.length}/150</Text>
+              <Text style={pStyles.bioCharCount}>{tempBio.length}/{BIO_MAX_LENGTH}</Text>
 
               <Text style={[pStyles.editLabel, { marginTop: 20 }]}>Describe yourself in three words</Text>
               <View style={pStyles.threeWordsEditContainer}>

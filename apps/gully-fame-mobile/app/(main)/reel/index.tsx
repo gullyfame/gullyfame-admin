@@ -44,6 +44,7 @@ import { resolveMediaUrl } from "@/utils/mediaUrl";
 import { followUpdateEmitter } from "@utils/followEmitter";
 import { listUiReels, toggleReelAction, toUiReel } from "@api/services/reelsService";
 import { getCompetitionReels } from "@api/services/competitionService";
+import { deletePost } from "@/api/services/profileExtrasService";
 import {
   addComment,
   listComments,
@@ -755,6 +756,32 @@ export default function GullyReelScreen() {
   };
   const handleFollowUser = handleToggleFollow;
   const handleUnfollowUser = handleToggleFollow;
+
+  // The reel the three-dots menu was opened on; its owner gets "Delete" instead of "Report".
+  const menuReel = reels.find((r) => r.id === currentReelForMenu);
+  const menuReelIsMine = !!menuReel && !!myUserId && menuReel.userId === myUserId;
+
+  const confirmDeleteReel = (reel: any) => {
+    if (!reel) return;
+    Alert.alert("Delete this post?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const result = await deletePost(String(reel._backendId || reel.id));
+          if (!result.success) {
+            toastError(result.message || "Couldn't delete this post.");
+            return;
+          }
+          toastSuccess("Post deleted");
+          const remaining = reels.filter((r) => r.id !== reel.id);
+          setReels(remaining);
+          if (remaining.length === 0) router.back();
+        },
+      },
+    ]);
+  };
 
   const handleSupportPress = useCallback(async (reelId: number, creatorId: string | undefined) => {
     try {
@@ -1766,6 +1793,33 @@ export default function GullyReelScreen() {
                   <Text style={styles.commandItemText}>Not Interested</Text>
                 </TouchableOpacity>
 
+                {menuReelIsMine ? (
+                <TouchableOpacity
+                  style={[styles.commandItem, styles.commandItemDanger]}
+                  onPress={() => {
+                    Animated.timing(threeDotsSlideAnim, {
+                      toValue: height,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start(() => {
+                      setShowThreeDotsMenu(false);
+                      confirmDeleteReel(menuReel);
+                    });
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.commandIconBox,
+                      {
+                        backgroundColor: "rgba(255, 59, 48, 0.15)",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons name="trash-can-outline" size={22} color="#FF3B30" />
+                  </View>
+                  <Text style={[styles.commandItemText, styles.commandTextDanger]}>Delete</Text>
+                </TouchableOpacity>
+                ) : (
                 <TouchableOpacity
                   style={[styles.commandItem, styles.commandItemDanger]}
                   onPress={() => {
@@ -1795,6 +1849,7 @@ export default function GullyReelScreen() {
                   </View>
                   <Text style={[styles.commandItemText, styles.commandTextDanger]}>Report</Text>
                 </TouchableOpacity>
+                )}
               </View>
 
               <TouchableOpacity

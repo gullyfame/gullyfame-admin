@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import type { Clip, EditorFilter, TextItem } from "@/types/editor.types";
 import { ffmpegFilterChain } from "../components/preview/filterPresets";
 import { buildTextAss, ensureFonts, type FrameSize } from "./bakeOverlays";
-import { probeMedia, runFFmpeg, toFFmpegPath, videoEncodeArgs } from "./ffmpeg";
+import { mp4AudioArgs, probeMedia, runFFmpeg, toFFmpegPath, videoEncodeArgs } from "./ffmpeg";
 
 /** Exports are scaled down to this height (keeps aspect); smaller media is left as is. */
 export const MAX_OUTPUT_HEIGHT = 1280;
@@ -123,7 +123,7 @@ export async function bakeEdits({
       await runFFmpeg(args, "bake photo");
     } else {
       if (needsConcat && anyAudio) args.push("-map", "[aout]", "-c:a", "aac", "-b:a", "128k");
-      else args.push("-map", "0:a?", "-c:a", "copy");
+      else args.push("-map", "0:a?", ...mp4AudioArgs(probes[0].audioCodec));
       args.push(...(await videoEncodeArgs()), "-y", output);
       await runFFmpeg(args, "bake video", { durationMs: duration * 1000, onProgress });
     }

@@ -13,6 +13,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UploadIcon } from "@/icons";
 import UpgradeFanToParticipantModal from "@/components/modals/UpgradeFanToParticipantModal/UpgradeFanToParticipantModal";
+import { DEFAULT_ROLE, getProfileRoute } from "@/components/profile/shared/profileTypes";
 
 const { width, height } = Dimensions.get("window");
 
@@ -21,6 +22,8 @@ export default function BottomNav({ activeTab, setActiveTab, tabs, onOpenDrawer 
   const [profileImage, setProfileImage] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // Known ahead of time so MyFame can open the right profile screen without a lookup.
+  const [userRole, setUserRole] = useState(null);
 
   const protectedRoutes = ["Upload", "MyFame"];
 
@@ -31,7 +34,8 @@ export default function BottomNav({ activeTab, setActiveTab, tabs, onOpenDrawer 
       setIsLoggedIn(loggedIn);
 
       if (loggedIn) {
-        const image = await AsyncStorage.getItem("userProfileImage");
+        const [[, image], [, role]] = await AsyncStorage.multiGet(["userProfileImage", "userRole"]);
+        setUserRole(role || null);
         if (image && image.trim() !== "") {
           setProfileImage(image);
         } else {
@@ -94,10 +98,16 @@ export default function BottomNav({ activeTab, setActiveTab, tabs, onOpenDrawer 
     } else if (tabName === "Home") {
       router.replace("/(main)/home");
     } else if (tabName === "MyFame") {
-      router.push({
-        pathname: "/(main)/profile/[id]",
-        params: { id: "me" },
-      });
+      // Straight to the own profile screen; going through profile/[id] showed a spinner
+      // screen and then a second navigation.
+      let role = userRole;
+      if (!role) {
+        try {
+          role = await AsyncStorage.getItem("userRole");
+        } catch (e) { /* intentionally ignored */
+        }
+      }
+      router.push(getProfileRoute(role || DEFAULT_ROLE, true));
     } else if (tabName === "Upload") {
       router.replace("/(main)/camera");
     } else if (tabName === "Reel") {

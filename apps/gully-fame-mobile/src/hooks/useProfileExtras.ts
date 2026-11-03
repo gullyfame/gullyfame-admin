@@ -1,19 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  FollowCounts,
-  ProfileHighlight,
-  ProfileInsights,
-  getFollowCounts,
-  getHighlights,
-  getProfileInsights,
-} from "@/api/services/profileExtrasService";
+import { useEffect, useRef, useState } from "react";
+import { FollowCounts, ProfileInsights, getFollowCounts, getProfileInsights } from "@/api/services/profileExtrasService";
 
-/** Follow counts, insights (own profile only) and highlights for a profile. */
+/** Follow counts and insights (own profile only) for a profile. */
 export function useProfileExtras(userId: string, isOwn: boolean) {
   const [followCounts, setFollowCounts] = useState<FollowCounts | null>(null);
   const [insights, setInsights] = useState<ProfileInsights | null>(null);
-  const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
-  const [highlightsLoading, setHighlightsLoading] = useState(true);
   const activeRef = useRef(true);
 
   useEffect(() => {
@@ -22,15 +13,6 @@ export function useProfileExtras(userId: string, isOwn: boolean) {
       activeRef.current = false;
     };
   }, []);
-
-  const refreshHighlights = useCallback(async () => {
-    if (!userId) return;
-    setHighlightsLoading(true);
-    const items = await getHighlights(userId).catch(() => [] as ProfileHighlight[]);
-    if (!activeRef.current) return;
-    setHighlights(items);
-    setHighlightsLoading(false);
-  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -42,8 +24,7 @@ export function useProfileExtras(userId: string, isOwn: boolean) {
       setFollowCounts(counts);
       setInsights(stats);
     });
-    refreshHighlights();
-  }, [userId, isOwn, refreshHighlights]);
+  }, [userId, isOwn]);
 
-  return { followCounts, insights, highlights, highlightsLoading, refreshHighlights };
+  return { followCounts, insights };
 }

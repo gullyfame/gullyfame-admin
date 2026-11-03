@@ -67,6 +67,9 @@ export const useUserReels = (userId: string) => {
   const resolvedUserIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const controllerRef = useRef<AbortController | null>(null);
+  // Once posts are on screen, later reloads update them in place instead of showing skeletons.
+  const shownRef = useRef(false);
+  const shownForRef = useRef(userId);
 
   const params = useLocalSearchParams();
 
@@ -78,15 +81,15 @@ export const useUserReels = (userId: string) => {
     };
   }, []);
 
-  // One page of the global reels list, filtered to this author on the device.
-  // BACKEND_PENDING: GET users/:id/posts?cursor=&limit= so the server filters by author.
+  // One page of this author's reels. The server filters by `author`; the check below
+  // also keeps the grid correct against a server that ignores the parameter.
   const fetchPage = useCallback(async (cursor: string | null) => {
     const ownerId = resolvedUserIdRef.current;
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
     const response = await apiClient.get<any>("reels", {
-      params: { limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) },
+      params: { limit: PAGE_SIZE, ...(ownerId ? { author: ownerId } : {}), ...(cursor ? { cursor } : {}) },
       signal: controller.signal,
     });
     const data = (response.data as any)?.data;
@@ -101,8 +104,12 @@ export const useUserReels = (userId: string) => {
   }, []);
 
   const fetchUserReels = useCallback(async (mode: "initial" | "refresh" = "initial") => {
+    if (shownForRef.current !== userId) {
+      shownForRef.current = userId;
+      shownRef.current = false;
+    }
     if (mode === "refresh") setRefreshing(true);
-    else setLoading(true);
+    else if (!shownRef.current) setLoading(true);
     setError(null);
 
     const myUserId = await AsyncStorage.getItem("userId");
@@ -129,6 +136,21 @@ export const useUserReels = (userId: string) => {
         }
       } catch {
         // A malformed newlyPostedReel param is ignored; the API list is still shown.
+      }
+    }
+
+    // Show the last saved list right away; the network result below replaces it.
+    if (!shownRef.current && cacheKey) {
+      try {
+        const saved = await AsyncStorage.getItem(cacheKey);
+        const savedReels: Reel[] = saved ? JSON.parse(saved) : [];
+        if (mountedRef.current && (savedReels.length > 0 || cachedReels.length > 0)) {
+          setReels(dedupe([...cachedReels, ...savedReels]));
+          setLoading(false);
+          shownRef.current = true;
+        }
+      } catch {
+        // No saved list; wait for the network.
       }
     }
 
@@ -166,6 +188,7 @@ export const useUserReels = (userId: string) => {
     setReels(dedupe([...cachedReels, ...apiReels]));
     setLoading(false);
     setRefreshing(false);
+    shownRef.current = true;
   }, [userId, params?.newReel, fetchPage]);
 
   const loadMore = useCallback(async () => {

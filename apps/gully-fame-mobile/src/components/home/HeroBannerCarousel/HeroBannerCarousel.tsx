@@ -14,6 +14,7 @@ import { wp } from "@/utils/responsive";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { TALENT_CATEGORIES } from "@/constants/talentCategories";
 import { resolveMediaUrl } from "@/utils/mediaUrl";
+import { Image as ExpoImage } from "expo-image";
 
 const HERO_IMAGE = require("@assets/images/carousel1.png");
 const LOCAL_SLIDES = TALENT_CATEGORIES.map((c, i) => ({ id: i + 1, ...c }));
@@ -23,21 +24,31 @@ type Slide =
   | ({ kind: "local" } & (typeof LOCAL_SLIDES)[number]);
 
 const HeroBannerCarousel = ({ slides: remoteSlides }: {
-  slides?: homePageHeroSlidesAPIData[];
+  /** null while the home data is still loading. */
+  slides?: homePageHeroSlidesAPIData[] | null;
 }) => {
   // Banners added in the admin panel (App Content > Home Banners) replace the built-in category
-  // slides. The built-in slides only show while there are no active banners.
+  // slides. The built-in slides only show once the server says there are no active banners;
+  // while loading nothing is shown, so placeholder slides never flash before the real ones.
+  const loading = remoteSlides == null;
   const bannerSlides: Slide[] = (remoteSlides ?? [])
     .map((b, i): Slide | null => {
       const image = resolveMediaUrl(b.image);
       return image ? { kind: "banner", id: b.id ?? i, title: b.title ?? "", image } : null;
     })
     .filter((s): s is Slide => s !== null);
-  const slides: Slide[] = bannerSlides.length > 0 ? bannerSlides : LOCAL_SLIDES.map((s) => ({ kind: "local" as const, ...s }));
+  const slides: Slide[] =
+    bannerSlides.length > 0 || loading ? bannerSlides : LOCAL_SLIDES.map((s) => ({ kind: "local" as const, ...s }));
   const renderSlideContent = (slide: Slide) =>
     slide.kind === "banner" ? (
       <View style={styles.heroBannerWrapper}>
-        <Image source={{ uri: slide.image }} style={styles.heroBannerImage} />
+        <ExpoImage
+          source={{ uri: slide.image }}
+          style={styles.heroBannerImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
+        />
         {slide.title ? (
           <View style={styles.heroBannerCaption}>
             <Text style={styles.heroTitle} numberOfLines={2}>
@@ -81,6 +92,7 @@ const HeroBannerCarousel = ({ slides: remoteSlides }: {
     return () => subscription.remove();
   }, []);
   useEffect(() => {
+    if (slides.length === 0) return;
     const interval = setInterval(() => {
       const next = indexRef.current + 1;
       indexRef.current = next;
@@ -101,7 +113,7 @@ const HeroBannerCarousel = ({ slides: remoteSlides }: {
   return (
     <>
       {/* One fixed background; only the text and icon change between slides. */}
-      {bannerSlides.length === 0 && <Image source={HERO_IMAGE} style={styles.heroBackgroundImage} />}
+      {!loading && bannerSlides.length === 0 && <Image source={HERO_IMAGE} style={styles.heroBackgroundImage} />}
       <ScrollView
         ref={carouselRef}
         horizontal
